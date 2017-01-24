@@ -1,0 +1,25 @@
+{
+  "name": "expired-tweets",
+  "version": "1.0.0",
+  "description": "Find tweets that contain expired or claimable URLs from your Twitter archive.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Joel A.",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^3.14.0",
+    "eslint-config-airbnb-base": "^11.0.1",
+    "eslint-plugin-import": "^2.2.0"
+  },
+  "dependencies": {
+    "axios": "^0.15.3",
+    "colors": "^1.1.2",
+    "node-whois": "^2.1.3",
+    "parse-domain": "^1.0.0",
+    "parse-whois": "^1.0.0",
+    "safe-eval": "^0.3.0",
+    "yargs": "^6.6.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+    "extends": "airbnb-base",
+    "installedESLint": true,
+    "plugins": [
+        "import"
+    ],
+    "rules": {
+        "indent": ["error", 4]
+    }
+}
