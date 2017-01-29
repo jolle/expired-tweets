@@ -21,3 +21,5 @@ whois jolle.io expires at 2017-09-03
 
 ### Why?
 Inspired by [this](https://twitter.com/securinti/status/823640079067287552).
+
+###### Logo icon(s) by icons8.com
