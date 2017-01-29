@@ -1,5 +1,8 @@
+![expired-tweets](expired-tweets.png)
+
+
 # expired-tweets
-This is heavily work in progress!
+Want to see if you have tweeted links that have expired or takeoverable domains? Look no more!
 
 ### Usage
 ```
