@@ -6,7 +6,7 @@ const Axios = require('axios');
 const fs = require('fs');
 const Path = require('path');
 const SafeEval = require('safe-eval');
-const Domain = require('parse-domain');
+const Domain = require('domain-name-parser');
 
 if (Args.help || Args.h) {
     console.log('expired-tweets'.blue + ' – get links from a Twitter user with claimable or expired tweets.\n\n\t-d|--dir=[directory]\t\tThe location of the Twitter archive\n\n\t-h|--help\t\t\t\tGet argument list (this)\n\n\t-v|--verbose\t\t\t\tVerbose mode on-i|--status-interval=[interval]\t\tInterval how often status notification should be executed\n\n' + 'note!'.bold.underline + ' the author(s), maker(s) or contributor(s) of this program is/are not reponsible for any actions made because of this application.');
@@ -131,61 +131,64 @@ if (Args.help || Args.h) {
 
                                             if (tweet.entities.urls.length > 0) {
                                                 tweet.entities.urls.forEach((url) => {
-                                                    const domain = Domain(url.expanded_url);
+                                                    const domain = url.expanded_url.replace(/[a-zA-Z0-9]+?:\/\//g, '').split('/')[0].split('@').slice(-1).join('');
+                                                    const parentDomain = (Domain(domain) || { domainName: false }).domainName;
 
-                                                    queue(`${domain.domain}.${domain.tld}`, Path.basename(file), new Promise((fulfill) => {
-                                                        let done = 0;
+                                                    if (domain && parentDomain) {
+                                                        queue(`${domain}`, Path.basename(file), new Promise((fulfill) => {
+                                                            let done = 0;
 
-                                                        whoisLookup(`${domain.domain}.${domain.tld}`)
-                                                            .then((expiry) => {
-                                                                if (Args.v || Args.verbose) console.log(`${'whois'.bold.gray} ${domain.domain}.${domain.tld} expires at ${expiry}`);
+                                                            whoisLookup(`${parentDomain}`)
+                                                                .then((expiry) => {
+                                                                    if (Args.v || Args.verbose) console.log(`${'whois'.bold.gray} ${parentDomain} expires at ${expiry}`);
 
-                                                                const expiresIn = new Date(expiry) - Date.now();
+                                                                    const expiresIn = new Date(expiry) - Date.now();
 
-                                                                if (expiresIn < 0) {
-                                                                    fulfill(`${'whois'.bold.yellow.bgRed} ${domain.domain}.${domain.tld} expired ${Math.abs(Math.round(expiresIn / 1000 / 60 / 60 / 24))} days ago!`);
-                                                                    claimableDomains.push(domain);
-                                                                } else if (expiresIn < 1000 * 60 * 60 * 24 * 3) { // if expiry in under 3 days
-                                                                    fulfill(`${'whois'.bold.yellow} ${domain.domain}.${domain.tld} expires in ${Math.round(expiresIn / 1000 / 60 / 60 / 24)} days at ${expiry}.`);
-                                                                    claimableDomains.push(domain);
-                                                                }
-
-                                                                done += 1;
-
-                                                                if (done === 2) {
-                                                                    fulfill();
-                                                                }
-                                                            })
-                                                            .catch((error) => {
-                                                                done += 1;
-
-                                                                if (done === 2) {
-                                                                    fulfill();
-                                                                }
-
-                                                                console.log(`${'whois'.red.bold} ${error} on ${domain.domain}.${domain.tld}`);
-                                                            });
-
-                                                        takeoverLookup(`http://${domain.subdomain ? `${domain.subdomain}.` : ''}${domain.domain}.${domain.tld}`)
-                                                            .then((takeoverHost) => {
-                                                                if (takeoverHost) {
-                                                                    console.log(`${'takeover'.bold.yellow.bgRed} ${domain.subdomain ? `${domain.subdomain}.` : ''}${domain.domain}.${domain.tld} can be taken over, host: ${takeoverHost}`);
+                                                                    if (expiresIn < 0) {
+                                                                        fulfill(`${'whois'.bold.yellow.bgRed} ${parentDomain} expired ${Math.abs(Math.round(expiresIn / 1000 / 60 / 60 / 24))} days ago!`);
+                                                                        claimableDomains.push(domain);
+                                                                    } else if (expiresIn < 1000 * 60 * 60 * 24 * 3) { // if expiry in under 3 days
+                                                                        fulfill(`${'whois'.bold.yellow} ${parentDomain} expires in ${Math.round(expiresIn / 1000 / 60 / 60 / 24)} days at ${expiry}.`);
+                                                                        claimableDomains.push(domain);
+                                                                    }
 
                                                                     done += 1;
 
                                                                     if (done === 2) {
                                                                         fulfill();
                                                                     }
-                                                                }
-                                                            })
-                                                            .catch(() => {
-                                                                done += 1;
+                                                                })
+                                                                .catch((error) => {
+                                                                    done += 1;
 
-                                                                if (done === 2) {
-                                                                    fulfill();
-                                                                }
-                                                            });
-                                                    }));
+                                                                    if (done === 2) {
+                                                                        fulfill();
+                                                                    }
+
+                                                                    console.log(`${'whois'.red.bold} ${error} on ${parentDomain}`);
+                                                                });
+
+                                                            takeoverLookup(`http://${domain}`)
+                                                                .then((takeoverHost) => {
+                                                                    if (takeoverHost) {
+                                                                        console.log(`${'takeover'.bold.yellow.bgRed} ${domain} can be taken over, host: ${takeoverHost}`);
+
+                                                                        done += 1;
+
+                                                                        if (done === 2) {
+                                                                            fulfill();
+                                                                        }
+                                                                    }
+                                                                })
+                                                                .catch(() => {
+                                                                    done += 1;
+
+                                                                    if (done === 2) {
+                                                                        fulfill();
+                                                                    }
+                                                                });
+                                                        }));
+                                                    }
                                                 });
                                             }
                                         });
