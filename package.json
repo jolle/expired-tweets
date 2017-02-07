@@ -17,6 +17,7 @@
     "axios": "^0.15.3",
     "colors": "^1.1.2",
     "domain-name-parser": "^2.3.0",
+    "electron": "^1.4.15",
     "node-whois": "^2.1.3",
     "parse-whois": "^1.0.0",
     "safe-eval": "^0.3.0",
