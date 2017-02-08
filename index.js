@@ -1,5 +1,3 @@
-require('colors');
-const Args = require('yargs').argv;
 const Whois = require('node-whois');
 const WhoisParser = require('parse-whois');
 const Axios = require('axios');
@@ -8,18 +6,91 @@ const Path = require('path');
 const SafeEval = require('safe-eval');
 const Domain = require('domain-name-parser');
 
-if (Args.help || Args.h) {
-    console.log('expired-tweets'.blue + ' – get links from a Twitter user with claimable or expired tweets.\n\n\t-d|--dir=[directory]\t\tThe location of the Twitter archive\n\n\t-h|--help\t\t\t\tGet argument list (this)\n\n\t-v|--verbose\t\t\t\tVerbose mode on-i|--status-interval=[interval]\t\tInterval how often status notification should be executed\n\n' + 'note!'.bold.underline + ' the author(s), maker(s) or contributor(s) of this program is/are not reponsible for any actions made because of this application.');
-} else {
-    console.log('expired-tweets'.blue.bold);
-    if (!Args.d && !Args.dir) {
-        console.log(`${'arguments'.bold.red} you didn't give the argument dir or d.`);
-    } else {
-        const foundDomains = []; // stores found domains
-        const checkedDomains = []; // stores whois checked domains
-        const claimableDomains = []; // stores claimable/expired domains
+/**
+ * @param {object} options
+ */
+function app(options) {
+    /**
+     * @typedef {object} events
+     */
+    this.events = {};
+
+    /**
+     * @description fires a callback defined with function on
+     * @param {string} event – event name
+     * @param {any} data – data to be passed with callback
+     */
+    this.fire = (event, data) => {
+        if (Object.keys(this.events).indexOf(event) > -1) {
+            this.events[event].forEach((callback) => {
+                callback(data);
+            });
+        }
+    };
+
+    /**
+     * @description stores a callback for firing afterwards
+     * @param {string} event – event name
+     * @param {function} callback – callback to be called when event is fired
+     */
+    this.on = (event, callback) => {
+        if (Object.keys(this.events).indexOf(event) === -1) {
+            this.events[event] = [];
+        }
+
+        this.events[event].push(callback);
+    };
+
+    /**
+     * @description whois lookup
+     */
+    this.whois = {
+        checked: {},
+
+        lookup: (domain, retry) => new Promise((fulfill, reject) => {
+            const index = Object.keys(this.whois.checked).map(key => key.toLowerCase())
+                            .indexOf(domain.toLowerCase());
+
+            if (index > -1) {
+                fulfill(this.whois.checked[Object.keys(this.whois.checked)[index]]);
+            } else {
+                Whois.lookup(domain, (whoisError, data) => {
+                    if (whoisError) {
+                        if (!retry) {
+                            setTimeout(() => {
+                                fulfill(this.whois.lookup(domain, true));
+                            }, 10 * 1000);
+                        } else {
+                            reject(whoisError);
+                        }
+                    } else if (data.indexOf('No match for "') > -1) {
+                        fulfill(-1);
+                    } else {
+                        const whoisData = WhoisParser.parseWhoIsData(data);
+
+                        if (whoisData.every((part) => {
+                            if (part.attribute === 'Registrar Registration Expiration Date' || part.attribute.startsWith('Expir')) {
+                                this.checked.push(part);
+                                fulfill(part.value);
+                                return false;
+                            }
+
+                            return true;
+                        })) {
+                            reject('no expiration date found');
+                        }
+                    }
+                });
+            }
+        }),
+    };
+
+    /**
+     * @description takeover logic
+     */
+    this.takeover = {
         /* eslint-disable quote-props */
-        const claimableWebsiteFingerprints = { // from: https://github.com/nahamsec/HostileSubBruteforcer/blob/master/PerlHostileSubBruteforcer/HostileBruteForceScanner.pl#L48-L54
+        fingerprints: {
             'Heroku': 'there is no app configured at that hostname',
             'AWS': 'NoSuchBucket',
             'Squarespace': 'No Such Account',
@@ -28,52 +99,14 @@ if (Args.help || Args.h) {
             'Tumblr': 'There\'s nothing here.',
             'WpEngine': 'The site you were looking for couldn\'t be found',
             'GoDaddy': 'http://mcc.godaddy.com/park/',
-        };
+        },
         /* eslint-enable quote-props */
 
-        const directory = Args.d || Args.dir; // directory
-        const tweetsDirectory = directory.indexOf('data/js/tweets') > -1 ? directory : Path.join(directory, 'data/js/tweets/'); // js data tweets dir
-
-        const scanFiles = {};
-
-        let tweetCount = 0;
-
-        const statusInterval = setInterval(() => {
-            console.log(`${'status'.bold.blue} ${foundDomains.length} domain(s) found, ${checkedDomains.length} domains(s) checked, ${claimableDomains.length} domain(s) claimable, ${tweetCount} tweet(s) fetched`);
-        }, (Args.statusInterval || Args.i || 2) * 60 * 1000);
-
-        const whoisLookup = (domain, retry) => new Promise((fulfill, reject) => {
-            Whois.lookup(domain, (whoisError, data) => {
-                checkedDomains.push(domain);
-
-                if (whoisError) {
-                    if (!retry) {
-                        setTimeout(() => {
-                            fulfill(whoisLookup(domain, true));
-                        }, 10 * 1000);
-                    } else {
-                        reject('failed whois');
-                    }
-                } else {
-                    const whoisData = WhoisParser.parseWhoIsData(data);
-
-                    whoisData.every((part) => {
-                        if (part.attribute === 'Registrar Registration Expiration Date' || part.attribute.startsWith('Expiry')) {
-                            fulfill(part.value);
-                            return false;
-                        }
-
-                        return true;
-                    });
-                }
-            });
-        });
-
-        const takeoverLookup = (url, retry) => new Promise((fulfill, reject) => {
-            Axios.get(url)
+        lookup: (url, retry) => new Promise((fulfill, reject) => {
+            Axios.get(url.startsWith('http') ? url : `http://${url}`)
                 .then(({ data }) => {
-                    Object.keys(claimableWebsiteFingerprints).forEach((host) => {
-                        if (data.indexOf(claimableWebsiteFingerprints[host]) > -1) {
+                    Object.keys(this.takeover.fingerprints).forEach((host) => {
+                        if (data.indexOf(this.takeover.fingerprints[host]) > -1) {
                             fulfill(host);
                         }
                     });
@@ -83,122 +116,177 @@ if (Args.help || Args.h) {
                 .catch(() => {
                     if (!retry) {
                         setTimeout(() => {
-                            fulfill(takeoverLookup(url, true));
+                            fulfill(this.takeover.lookup(url, true));
                         }, 10 * 1000);
                     } else {
                         reject();
                     }
                 });
-        });
+        }),
+    };
 
-        const queue = (domain, file, pend) => {
-            foundDomains.push(domain);
-            scanFiles[file].pending += 1;
+    /**
+     * @description queue class for handling queues
+     */
+    function Queue() {
+        this.queue = [];
+        this.endCallbacks = [];
 
-            pend.then(() => {
-                checkedDomains.push(domain);
-                scanFiles[file].pending -= 1;
-
-                if (Object.keys(scanFiles).filter(childFile => scanFiles[childFile].pending > 0).length === 0) {
-                    console.log(`${'status'.bold.blue} ${foundDomains.length} domain(s) found, ${checkedDomains.length} domains(s) checked, ${claimableDomains.length} domain(s) claimable, ${tweetCount} tweet(s) fetched`);
-                    clearInterval(statusInterval);
-                }
-            });
+        this.add = () => {
+            const token = Math.random().toString(36).substr(2, 10);
+            this.queue.push(token);
+            return token;
         };
 
-        fs.readdir(tweetsDirectory, (dirError, files) => {
+        this.complete = (token) => {
+            const index = this.queue.indexOf(token);
+            if (index > -1) this.queue.splice(index, 1);
+            if (this.queue.length === 0) {
+                this.endCallbacks.forEach((callback) => {
+                    callback();
+                });
+            }
+        };
+
+        this.on = (event, callback) => {
+            if (event === 'end') {
+                this.endCallbacks.push(callback);
+            }
+        };
+    }
+
+    /**
+     * @description gets all javascript files in a directory
+     * @param {string} directory
+     */
+    this.getFiles = directory => new Promise((fulfill, reject) => {
+        fs.readdir(directory, (dirError, files) => {
             if (dirError) {
-                console.log(`${'readdir'.bold.red} An error occured when trying to get files in given directory:`, dirError);
+                reject(dirError);
             } else {
+                const jsFiles = [];
+                const fileQueue = new Queue();
+
                 files.forEach((file) => {
-                    fs.stat(Path.join(tweetsDirectory, file), (statError, stat) => {
+                    const fileToken = fileQueue.add();
+                    fs.stat(Path.join(directory, file), (statError, stat) => {
                         if (statError) {
-                            console.log(`${'stat'.bold.red} An error occured when trying to get stats of a file:`, statError);
+                            reject(statError);
                         } else if (stat.isFile() && Path.basename(file).split('.').slice(-1)[0] === 'js') {
-                            scanFiles[Path.basename(file)] = {
-                                pending: 0,
-                            };
-
-                            fs.readFile(Path.join(tweetsDirectory, file), (readError, fileData) => {
-                                if (readError) {
-                                    console.log(`${'readfile'.bold.red} An error occured when trying to read a file:`, statError);
-                                } else {
-                                    const tweets = SafeEval(`Grailbird={data:{}};${fileData}`);
-
-                                    if (tweets) {
-                                        tweets.data[Object.keys(tweets.data)[0]].forEach((tweet) => {
-                                            tweetCount += 1;
-
-                                            if (tweet.entities.urls.length > 0) {
-                                                tweet.entities.urls.forEach((url) => {
-                                                    const domain = url.expanded_url.replace(/[a-zA-Z0-9]+?:\/\//g, '').split('/')[0].split('@').slice(-1).join('');
-                                                    const parentDomain = (Domain(domain) || { domainName: false }).domainName;
-
-                                                    if (domain && parentDomain) {
-                                                        queue(`${domain}`, Path.basename(file), new Promise((fulfill) => {
-                                                            let done = 0;
-
-                                                            whoisLookup(`${parentDomain}`)
-                                                                .then((expiry) => {
-                                                                    if (Args.v || Args.verbose) console.log(`${'whois'.bold.gray} ${parentDomain} expires at ${expiry}`);
-
-                                                                    const expiresIn = new Date(expiry) - Date.now();
-
-                                                                    if (expiresIn < 0) {
-                                                                        fulfill(`${'whois'.bold.yellow.bgRed} ${parentDomain} expired ${Math.abs(Math.round(expiresIn / 1000 / 60 / 60 / 24))} days ago!`);
-                                                                        claimableDomains.push(domain);
-                                                                    } else if (expiresIn < 1000 * 60 * 60 * 24 * 3) { // if expiry in under 3 days
-                                                                        fulfill(`${'whois'.bold.yellow} ${parentDomain} expires in ${Math.round(expiresIn / 1000 / 60 / 60 / 24)} days at ${expiry}.`);
-                                                                        claimableDomains.push(domain);
-                                                                    }
-
-                                                                    done += 1;
-
-                                                                    if (done === 2) {
-                                                                        fulfill();
-                                                                    }
-                                                                })
-                                                                .catch((error) => {
-                                                                    done += 1;
-
-                                                                    if (done === 2) {
-                                                                        fulfill();
-                                                                    }
-
-                                                                    console.log(`${'whois'.red.bold} ${error} on ${parentDomain}`);
-                                                                });
-
-                                                            takeoverLookup(`http://${domain}`)
-                                                                .then((takeoverHost) => {
-                                                                    if (takeoverHost) {
-                                                                        console.log(`${'takeover'.bold.yellow.bgRed} ${domain} can be taken over, host: ${takeoverHost}`);
-
-                                                                        done += 1;
-
-                                                                        if (done === 2) {
-                                                                            fulfill();
-                                                                        }
-                                                                    }
-                                                                })
-                                                                .catch(() => {
-                                                                    done += 1;
-
-                                                                    if (done === 2) {
-                                                                        fulfill();
-                                                                    }
-                                                                });
-                                                        }));
-                                                    }
-                                                });
-                                            }
-                                        });
-                                    }
-                                }
-                            });
+                            jsFiles.push(Path.join(directory, file));
                         }
+
+                        fileQueue.complete(fileToken);
                     });
+                });
+
+                fileQueue.on('end', () => {
+                    fulfill(jsFiles);
                 });
             }
         });
-    }
+    });
+
+    /**
+     * @typedef {array} checked hosts (not domains)
+     */
+    this.checked = [];
+
+    /**
+     * @description run the main logic
+     */
+    this.run = () => {
+        if (!options.dir) {
+            this.fire('error', 'no directory given');
+        } else {
+            const fileQueue = new Queue();
+
+            this.getFiles(options.dir)
+                .then((files) => {
+                    files.forEach((file) => {
+                        fs.readFile(file, 'utf-8', (readError, fileData) => {
+                            if (readError) {
+                                this.fire('error', readError);
+                            } else {
+                                const tweetList = (SafeEval(`Grailbird={data:{}};${fileData}`) || { data: false }).data;
+                                if (tweetList) {
+                                    Object.keys(tweetList).forEach((key) => {
+                                        const tweets = tweetList[key];
+
+                                        if (tweets) {
+                                            // tweetCount += tweets.length;
+
+                                            const hosts = tweets.map(tweet =>
+                                                            tweet.entities.urls.map(url =>
+                                                                url.expanded_url.replace(/[a-zA-Z0-9]+?:\/\//g, '').split('/')[0].split('@').slice(-1).join('')))
+                                                            .reduce((a, b) => a.concat(b));
+
+                                            const fileToken = fileQueue.add();
+
+                                            if (hosts && hosts.length > 0) {
+                                                const hostQueue = new Queue();
+
+                                                hostQueue.on('end', () => {
+                                                    fileQueue.complete(fileToken);
+                                                });
+
+                                                hosts.forEach((host) => {
+                                                    if (host) {
+                                                        const rootDomain = (Domain(host)
+                                                                        || { domainName: false })
+                                                                            .domainName;
+
+                                                        const hostToken = hostQueue.add();
+
+                                                        const taskQueue = new Queue();
+
+                                                        const whoisToken = taskQueue.add();
+                                                        const takeoverToken = taskQueue.add();
+
+                                                        taskQueue.on('end', () => {
+                                                            hostQueue.complete(hostToken);
+                                                        });
+
+                                                        this.whois.lookup(rootDomain).catch(() => {
+                                                            taskQueue.complete(whoisToken);
+                                                        }).then((expiry) => {
+                                                            this.fire('data', {
+                                                                type: 'whois',
+                                                                data: expiry,
+                                                                domain: host,
+                                                            });
+
+                                                            taskQueue.complete(whoisToken);
+                                                        });
+
+                                                        this.takeover.lookup(host).catch(() => {
+                                                            taskQueue.complete(takeoverToken);
+                                                        }).then((claimHost, claimable) => {
+                                                            if (claimable) {
+                                                                this.fire('data', {
+                                                                    type: 'takeover',
+                                                                    data: claimHost,
+                                                                    domain: host,
+                                                                });
+                                                            }
+
+                                                            taskQueue.complete(takeoverToken);
+                                                        });
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    });
+                })
+                .catch((error) => {
+                    this.fire('error', error);
+                });
+        }
+    };
 }
+
+module.exports = app;
