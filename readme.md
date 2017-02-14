@@ -27,10 +27,9 @@ electron-packager ./ expired-tweets --platform=darwin --overwrite --icon=icon.ic
 
 ### Example result
 ```
-expired-tweets
-whois vanish*ee***.com expires at 2016-12-17T17:30:32Z
-whois vanish*ee***.com expired 38 days ago!
-whois jolle.io expires at 2017-09-03
+alert vanishreegov.com expired a while ago
+info Checked www.flickr.com
+alert vanishreegov.com may be takeoverable with an unknown host
 ```
 
 ### Why?
