@@ -5,6 +5,8 @@
 Want to see if you have tweeted links that have expired or takeoverable domains? Look no more!
 
 ### Usage
+This tool requires npm and nodejs.
+
 ```
 npm install
 node index.js -d=twitter_archive_directory_here
