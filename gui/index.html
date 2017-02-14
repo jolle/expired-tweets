@@ -71,6 +71,7 @@
     <script>
     (function() {
         var fileCaption = document.createElement('style');
+        var username = "";
         document.head.appendChild(fileCaption);
 
         var table = document.querySelector("table tbody") || document.querySelector("table");
@@ -94,7 +95,7 @@
                         if (data.domain) {
                             var row = document.querySelector('[data-domain="' + data.domain + '"]');
                             if (!row) {
-                                table.innerHTML += "<tr data-domain=\"" + data.domain.replace(/"/g, '&quot;') + "\"><td>" + data.domain.replace(/"/g, '&quot;') + "</td><td></td><td></td><td><a href=\"https://twitter.com/search?f=tweets&q=from%3Ausername%20filter%3Alinks%20" + data.domain.replace(/"/g, '&quot;') + "\" onclick=\"electronOpenLinkInBrowser()\">Open</a></td></tr>";
+                                table.innerHTML += "<tr data-domain=\"" + data.domain.replace(/"/g, '&quot;') + "\"><td>" + data.domain.replace(/"/g, '&quot;') + "</td><td></td><td></td><td><a href=\"https://twitter.com/search?f=tweets&q=from%3A" + username + "%20filter%3Alinks%20" + data.domain.replace(/"/g, '&quot;') + "\" onclick=\"electronOpenLinkInBrowser()\">Open</a></td></tr>";
                                 row = document.querySelector('[data-domain="' + data.domain + '"]');
                             }
 
@@ -118,10 +119,22 @@
                                     }
                                 }
                             } else if (data.type === 'takeover') {
-
+                                if (data.data === false) {
+                                    row.querySelectorAll('td')[2].innerHTML += "<i class=\"fa fa-times\" style=\"color: #32cd32\"></i>";
+                                } else if (data.data === 'warning') {
+                                    row.querySelectorAll('td')[2].innerHTML += "<i class=\"fa fa-exclamation-triangle\" style=\"color: #ffa500\"></i>";
+                                } else {
+                                    row.querySelectorAll('td')[2].innerHTML += "<i class=\"fa fa-check\" style=\"color: #f00\" title=\"" + data.data + "\"></i>";
+                                    row.classList.add('table-danger');
+                                }
                             }
                         }
                     });
+
+                    expiredTweets.on('username', function(_username) {
+                        username = _username;
+                    });
+
                     expiredTweets.on('error', console.error);
                 } else {
                     fileCaption.innerHTML = '';

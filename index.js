@@ -107,11 +107,11 @@ function app(options) {
                 .then(({ data }) => {
                     Object.keys(this.takeover.fingerprints).forEach((host) => {
                         if (data.indexOf(this.takeover.fingerprints[host]) > -1) {
-                            fulfill(host);
+                            fulfill(host, true);
                         }
                     });
 
-                    reject();
+                    fulfill(null, false);
                 })
                 .catch(() => {
                     if (!retry) {
@@ -188,6 +188,18 @@ function app(options) {
     });
 
     /**
+     * @description if username is found, fire event only once
+     */
+    this.calledUsernameFound = false;
+    this.usernameFound = (username) => {
+        if (!this.calledUsernameFound) {
+            this.calledUsernameFound = true;
+
+            this.fire('username', username);
+        }
+    };
+
+    /**
      * @typedef {array} checked hosts (not domains)
      */
     this.checked = [];
@@ -214,7 +226,7 @@ function app(options) {
                                         const tweets = tweetList[key];
 
                                         if (tweets) {
-                                            // tweetCount += tweets.length;
+                                            if (tweets[0].user.screen_name) this.usernameFound(tweets[0].user.screen_name);
 
                                             const hosts = tweets.map(tweet =>
                                                             tweet.entities.urls.map(url =>
@@ -260,12 +272,24 @@ function app(options) {
                                                         });
 
                                                         this.takeover.lookup(host).catch(() => {
+                                                            this.fire('data', {
+                                                                type: 'takeover',
+                                                                data: 'warning',
+                                                                domain: host,
+                                                            });
+
                                                             taskQueue.complete(takeoverToken);
                                                         }).then((claimHost, claimable) => {
                                                             if (claimable) {
                                                                 this.fire('data', {
                                                                     type: 'takeover',
                                                                     data: claimHost,
+                                                                    domain: host,
+                                                                });
+                                                            } else if (claimable === false) {
+                                                                this.fire('data', {
+                                                                    type: 'takeover',
+                                                                    data: false,
                                                                     domain: host,
                                                                 });
                                                             }
