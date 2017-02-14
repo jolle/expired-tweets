@@ -2,9 +2,13 @@ require('colors');
 const ExpiredTweets = require('./index.js');
 const args = require('yargs').argv;
 
-if (args.d || args.dir) {
+let dir = args.d || args.dir;
+
+if (dir) {
+    if (dir.indexOf('data/js/tweets/') === -1) dir += '/data/js/tweets/';
+
     const tweetScan = new ExpiredTweets({
-        dir: args.d || args.dir,
+        dir,
     });
     tweetScan.run();
 
