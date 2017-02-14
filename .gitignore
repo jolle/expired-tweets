@@ -1,2 +1,3 @@
 node_modules
 expired-tweets-*
+.DS_Store
