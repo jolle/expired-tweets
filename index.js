@@ -226,7 +226,9 @@ function app(options) {
                                         const tweets = tweetList[key];
 
                                         if (tweets) {
-                                            if (tweets[0].user.screen_name) this.usernameFound(tweets[0].user.screen_name);
+                                            if (tweets[0].user.screen_name) {
+                                                this.usernameFound(tweets[0].user.screen_name);
+                                            }
 
                                             const hosts = tweets.map(tweet =>
                                                             tweet.entities.urls.map(url =>
