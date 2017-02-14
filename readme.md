@@ -5,17 +5,13 @@
 Want to see if you have tweeted links that have expired or takeoverable domains? Look no more!
 
 ### Usage
+This tool requires nodejs and npm (and electron for GUI).
+
 use the gui with `electron gui.js` or with a binary
 OR
 ```
 node cli.js -d=twitter_archive_directory_here
 ```
-
-This tool requires npm and nodejs.
-
-```
-npm install
-node index.js -d=twitter_archive_directory_here
 ```
 
 You can get your Twitter archive [here](https://twitter.com/settings/account) (_Your Twitter archive_).
