@@ -11,6 +11,13 @@ OR
 node cli.js -d=twitter_archive_directory_here
 ```
 
+This tool requires npm and nodejs.
+
+```
+npm install
+node index.js -d=twitter_archive_directory_here
+```
+
 You can get your Twitter archive [here](https://twitter.com/settings/account) (_Your Twitter archive_).
 
 ### Example result
