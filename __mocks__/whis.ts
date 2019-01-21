@@ -1,4 +1,4 @@
-const responses = {
+const responses: any = {
     'expired.com': {
         expiration: new Date(new Date().setMonth(new Date().getMonth() - 1)),
         exists: true
@@ -13,5 +13,7 @@ const responses = {
     }
 };
 
-export default (domain: string) =>
-    Promise.resolve(responses[domain] || { exists: false });
+export default (domain: string): Promise<any> =>
+    Promise.resolve(((responses[domain as any] as any) || {
+        exists: false
+    }) as any);

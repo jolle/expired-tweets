@@ -5,7 +5,7 @@ describe('Whois provider', async () => {
     const whois = new Whois();
 
     it('warns on dropped domains', async () => {
-        const result = await whois.checkURL(
+        const { result } = await whois.checkURL(
             `https://expired.com/some/page/here`
         );
 
@@ -13,7 +13,7 @@ describe('Whois provider', async () => {
     });
 
     it('errors on non-existent domains', async () => {
-        const result = await whois.checkURL(
+        const { result } = await whois.checkURL(
             `https://doesnt-exist.com/some/page/here`
         );
 
@@ -21,7 +21,7 @@ describe('Whois provider', async () => {
     });
 
     it('detects an existing domains', async () => {
-        const result = await whois.checkURL(
+        const { result } = await whois.checkURL(
             `https://exists.com/some/page/here`
         );
 
