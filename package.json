@@ -1,29 +1,33 @@
 {
-  "name": "expired-tweets",
-  "version": "1.0.0",
-  "description": "Find tweets that contain expired or claimable URLs from your Twitter archive.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Joel A.",
-  "license": "MIT",
-  "devDependencies": {
-    "eslint": "^3.14.0",
-    "eslint-config-airbnb-base": "^11.0.1",
-    "eslint-plugin-import": "^2.2.0"
-  },
-  "dependencies": {
-    "axios": "^0.15.3",
-    "bootstrap": "^4.0.0-alpha.6",
-    "colors": "^1.1.2",
-    "domain-name-parser": "^2.3.0",
-    "electron": "^1.4.15",
-    "electron-open-link-in-browser": "^1.0.2",
-    "font-awesome": "^4.7.0",
-    "node-whois": "^2.1.3",
-    "parse-whois": "^1.0.0",
-    "safe-eval": "^0.3.0",
-    "yargs": "^6.6.0"
-  }
+    "name": "expired-tweets",
+    "version": "2.0.0",
+    "description": "Find tweets that contain expired or claimable URLs from your Twitter archive.",
+    "main": "build/index",
+    "types": "build/index",
+    "scripts": {
+        "test": "./node_modules/.bin/jest",
+        "build": "rm -rf build; tsc; echo '#!/usr/bin/env node' | cat - build/cli.js > /tmp/out && mv /tmp/out build/cli.js; chmod +x build/cli.js"
+    },
+    "bin": {
+        "expired-tweets": "build/cli.js"
+    },
+    "author": "Joel A.",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/es6-promise": "^3.3.0",
+        "@types/jest": "^23.3.10",
+        "@types/node": "^10.0.0",
+        "@types/yargs": "^12.0.5",
+        "jest": "^23.6.0",
+        "ts-jest": "^23.10.5",
+        "typescript": "^3.2.2"
+    },
+    "dependencies": {
+        "axios": "^0.18.0",
+        "chalk": "^2.4.2",
+        "safe-eval": "^0.3.0",
+        "takeover": "0.0.3",
+        "whis": "2.0.0",
+        "yargs": "^12.0.5"
+    }
 }

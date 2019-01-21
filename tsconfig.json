@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "outDir": "build",
+        "sourceMap": false,
+        "noImplicitAny": true,
+        "module": "commonjs",
+        "target": "es2016",
+        "lib": ["esnext"],
+        "strict": true,
+        "typeRoots": ["./node_modules/@types", "./typings"],
+        "esModuleInterop": true,
+        "declaration": true
+    },
+    "include": ["src/**/*", "typings"],
+    "exclude": [
+        "node_modules",
+        "**/*.spec.ts",
+        "__tests__",
+        "__mocks__",
+        "build"
+    ]
+}

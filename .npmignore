@@ -1,5 +1,8 @@
+src
 node_modules
+__tests__
+__mocks__
 expired-tweets-*
 .DS_Store
 *.log
-build
+*.png
